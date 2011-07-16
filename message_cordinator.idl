@@ -9,8 +9,8 @@ module Messaging {
 
 	typedef sequence<Receiver> ReceiverSeq;
 
-	interface Cordinator {
-		long register();
+	interface Coordinator {
+		long register(in Receiver rec);
 		boolean ready();
 		ReceiverSeq receivers();
 	};

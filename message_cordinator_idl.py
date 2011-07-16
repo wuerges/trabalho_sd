@@ -77,12 +77,12 @@ _0_Messaging._tc_ReceiverSeq = omniORB.tcInternal.createTypeCode(_0_Messaging._a
 omniORB.registerType(ReceiverSeq._NP_RepositoryId, _0_Messaging._ad_ReceiverSeq, _0_Messaging._tc_ReceiverSeq)
 del ReceiverSeq
 
-# interface Cordinator
-_0_Messaging._d_Cordinator = (omniORB.tcInternal.tv_objref, "IDL:Messaging/Cordinator:1.0", "Cordinator")
-omniORB.typeMapping["IDL:Messaging/Cordinator:1.0"] = _0_Messaging._d_Cordinator
-_0_Messaging.Cordinator = omniORB.newEmptyClass()
-class Cordinator :
-    _NP_RepositoryId = _0_Messaging._d_Cordinator[1]
+# interface Coordinator
+_0_Messaging._d_Coordinator = (omniORB.tcInternal.tv_objref, "IDL:Messaging/Coordinator:1.0", "Coordinator")
+omniORB.typeMapping["IDL:Messaging/Coordinator:1.0"] = _0_Messaging._d_Coordinator
+_0_Messaging.Coordinator = omniORB.newEmptyClass()
+class Coordinator :
+    _NP_RepositoryId = _0_Messaging._d_Coordinator[1]
 
     def __init__(self, *args, **kw):
         raise RuntimeError("Cannot construct objects of this type.")
@@ -90,49 +90,49 @@ class Cordinator :
     _nil = CORBA.Object._nil
 
 
-_0_Messaging.Cordinator = Cordinator
-_0_Messaging._tc_Cordinator = omniORB.tcInternal.createTypeCode(_0_Messaging._d_Cordinator)
-omniORB.registerType(Cordinator._NP_RepositoryId, _0_Messaging._d_Cordinator, _0_Messaging._tc_Cordinator)
+_0_Messaging.Coordinator = Coordinator
+_0_Messaging._tc_Coordinator = omniORB.tcInternal.createTypeCode(_0_Messaging._d_Coordinator)
+omniORB.registerType(Coordinator._NP_RepositoryId, _0_Messaging._d_Coordinator, _0_Messaging._tc_Coordinator)
 
-# Cordinator operations and attributes
-Cordinator._d_register = ((), (omniORB.tcInternal.tv_long, ), None)
-Cordinator._d_ready = ((), (omniORB.tcInternal.tv_boolean, ), None)
-Cordinator._d_receivers = ((), (omniORB.typeMapping["IDL:Messaging/ReceiverSeq:1.0"], ), None)
+# Coordinator operations and attributes
+Coordinator._d_register = ((omniORB.typeMapping["IDL:Messaging/Receiver:1.0"], ), (omniORB.tcInternal.tv_long, ), None)
+Coordinator._d_ready = ((), (omniORB.tcInternal.tv_boolean, ), None)
+Coordinator._d_receivers = ((), (omniORB.typeMapping["IDL:Messaging/ReceiverSeq:1.0"], ), None)
 
-# Cordinator object reference
-class _objref_Cordinator (CORBA.Object):
-    _NP_RepositoryId = Cordinator._NP_RepositoryId
+# Coordinator object reference
+class _objref_Coordinator (CORBA.Object):
+    _NP_RepositoryId = Coordinator._NP_RepositoryId
 
     def __init__(self):
         CORBA.Object.__init__(self)
 
     def register(self, *args):
-        return _omnipy.invoke(self, "register", _0_Messaging.Cordinator._d_register, args)
+        return _omnipy.invoke(self, "register", _0_Messaging.Coordinator._d_register, args)
 
     def ready(self, *args):
-        return _omnipy.invoke(self, "ready", _0_Messaging.Cordinator._d_ready, args)
+        return _omnipy.invoke(self, "ready", _0_Messaging.Coordinator._d_ready, args)
 
     def receivers(self, *args):
-        return _omnipy.invoke(self, "receivers", _0_Messaging.Cordinator._d_receivers, args)
+        return _omnipy.invoke(self, "receivers", _0_Messaging.Coordinator._d_receivers, args)
 
     __methods__ = ["register", "ready", "receivers"] + CORBA.Object.__methods__
 
-omniORB.registerObjref(Cordinator._NP_RepositoryId, _objref_Cordinator)
-_0_Messaging._objref_Cordinator = _objref_Cordinator
-del Cordinator, _objref_Cordinator
+omniORB.registerObjref(Coordinator._NP_RepositoryId, _objref_Coordinator)
+_0_Messaging._objref_Coordinator = _objref_Coordinator
+del Coordinator, _objref_Coordinator
 
-# Cordinator skeleton
+# Coordinator skeleton
 __name__ = "Messaging__POA"
-class Cordinator (PortableServer.Servant):
-    _NP_RepositoryId = _0_Messaging.Cordinator._NP_RepositoryId
+class Coordinator (PortableServer.Servant):
+    _NP_RepositoryId = _0_Messaging.Coordinator._NP_RepositoryId
 
 
-    _omni_op_d = {"register": _0_Messaging.Cordinator._d_register, "ready": _0_Messaging.Cordinator._d_ready, "receivers": _0_Messaging.Cordinator._d_receivers}
+    _omni_op_d = {"register": _0_Messaging.Coordinator._d_register, "ready": _0_Messaging.Coordinator._d_ready, "receivers": _0_Messaging.Coordinator._d_receivers}
 
-Cordinator._omni_skeleton = Cordinator
-_0_Messaging__POA.Cordinator = Cordinator
-omniORB.registerSkeleton(Cordinator._NP_RepositoryId, Cordinator)
-del Cordinator
+Coordinator._omni_skeleton = Coordinator
+_0_Messaging__POA.Coordinator = Coordinator
+omniORB.registerSkeleton(Coordinator._NP_RepositoryId, Coordinator)
+del Coordinator
 __name__ = "Messaging"
 
 #
