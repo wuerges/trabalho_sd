@@ -9,11 +9,11 @@ class MessageServer(Messaging__POA.Receiver):
 		self.events = []
 		self.recs = {}
 		self.recs_q = {}
+		self.tic = 0
 		self.ends = 0
 		
 	def send(self, m_id, ts, v):
-		rtic = dict([(c.id, c.ts) for c in ts])
-		self.send_c((m_id, rtic, v))
+		self.send_c((m_id, ts, v))
 
 	def get_id(self):
 		return self.my_id
@@ -24,43 +24,32 @@ class MessageServer(Messaging__POA.Receiver):
 		recs = self.coord.receivers()
 		self.recs = dict([(x.get_id(), x) for x in recs])
 		self.recs_q = dict([(x.get_id(), []) for x in recs])
-		self.tic = dict([(x.get_id(), 0) for x in recs])
 
 	def messages(self, size):
-		return [random.sample(self.recs.keys(), 1)[0] for i in range(10)]
+		return [random.sample(self.recs.keys(), 1)[0] for i in range(5)]
 	
 	@process
 	def do_store_event(self, ein):
 		while(1):
-			print "doing store"
 			self.events.append(ein())
 
 	@process
 	def do_tics(self, cin, cout):
 		while(1):
-			print "doing tick"
 			t = cin()
-			print "print tick"
-			print t
-			if t != {}:
-				self.tic = dict([(x, max(self.tic[x], t[x])) for x in self.tic.keys()])
-			else:
-				self.tic = self.tic.copy()
-			self.tic[self.my_id] = self.tic[self.my_id] + 1
-			print "Printing Clock"
-			print self.tic
+			if  t > self.tic:
+				self.tic = t
+			self.tic = self.tic + 1
 			cout(self.tic) 
 
 	def do_event(self, m, tout, tin, eout, v):
-		print "doing event"
-		tout({})
+		tout(0)
 		mtic = tin()
 		if(m == self.my_id):
 			eout((m, mtic, v, "loc"))
 		else:
 			eout((m, mtic, v, "send"))
-			stic = [Messaging.Clock(x, mtic[x]) for x in mtic.keys()]
-			self.recs[m].send(self.my_id, stic, v * 2)
+			self.recs[m].send(self.my_id, mtic, v * 2)
 	
 	@process
 	def do_sends(self, tout, tin, eout, fout):
@@ -81,7 +70,6 @@ class MessageServer(Messaging__POA.Receiver):
 			t = tin()
 			eout((origin, t, v, "rec"))
 			if v < 0:
-				print "read end event"
 				self.ends = self.ends + 1
 			# if received end events from all partners
 			if self.ends == (len(self.recs.keys()) - 1):
@@ -94,7 +82,6 @@ class MessageServer(Messaging__POA.Receiver):
 		tout.poison()
 		eout.poison()
 		sin.poison()
-		print "reached end"
 
 	def do_test(self):
 		tin_c = Channel("tics-in")
@@ -118,7 +105,7 @@ class MessageServer(Messaging__POA.Receiver):
 				send_c.writer())
 		)
 
-		print self.events
+		print "\n".join([str(x) for x in self.events])
 		self.coord.unregister(self.my_id)
 
 class CoordinatorServer(Messaging__POA.Coordinator):
