@@ -15,6 +15,33 @@ _0_Messaging = omniORB.openModule("Messaging", r"message_cordinator.idl")
 _0_Messaging__POA = omniORB.openModule("Messaging__POA", r"message_cordinator.idl")
 
 
+# struct Clock
+_0_Messaging.Clock = omniORB.newEmptyClass()
+class Clock (omniORB.StructBase):
+    _NP_RepositoryId = "IDL:Messaging/Clock:1.0"
+
+    def __init__(self, id, ts):
+        self.id = id
+        self.ts = ts
+
+_0_Messaging.Clock = Clock
+_0_Messaging._d_Clock  = (omniORB.tcInternal.tv_struct, Clock, Clock._NP_RepositoryId, "Clock", "id", omniORB.tcInternal.tv_long, "ts", omniORB.tcInternal.tv_long)
+_0_Messaging._tc_Clock = omniORB.tcInternal.createTypeCode(_0_Messaging._d_Clock)
+omniORB.registerType(Clock._NP_RepositoryId, _0_Messaging._d_Clock, _0_Messaging._tc_Clock)
+del Clock
+
+# typedef ... VectorClock
+class VectorClock:
+    _NP_RepositoryId = "IDL:Messaging/VectorClock:1.0"
+    def __init__(self, *args, **kw):
+        raise RuntimeError("Cannot construct objects of this type.")
+_0_Messaging.VectorClock = VectorClock
+_0_Messaging._d_VectorClock  = (omniORB.tcInternal.tv_sequence, omniORB.typeMapping["IDL:Messaging/Clock:1.0"], 0)
+_0_Messaging._ad_VectorClock = (omniORB.tcInternal.tv_alias, VectorClock._NP_RepositoryId, "VectorClock", (omniORB.tcInternal.tv_sequence, omniORB.typeMapping["IDL:Messaging/Clock:1.0"], 0))
+_0_Messaging._tc_VectorClock = omniORB.tcInternal.createTypeCode(_0_Messaging._ad_VectorClock)
+omniORB.registerType(VectorClock._NP_RepositoryId, _0_Messaging._ad_VectorClock, _0_Messaging._tc_VectorClock)
+del VectorClock
+
 # interface Receiver
 _0_Messaging._d_Receiver = (omniORB.tcInternal.tv_objref, "IDL:Messaging/Receiver:1.0", "Receiver")
 omniORB.typeMapping["IDL:Messaging/Receiver:1.0"] = _0_Messaging._d_Receiver
@@ -33,7 +60,7 @@ _0_Messaging._tc_Receiver = omniORB.tcInternal.createTypeCode(_0_Messaging._d_Re
 omniORB.registerType(Receiver._NP_RepositoryId, _0_Messaging._d_Receiver, _0_Messaging._tc_Receiver)
 
 # Receiver operations and attributes
-Receiver._d_send = ((omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long), (), None)
+Receiver._d_send = ((omniORB.tcInternal.tv_long, omniORB.typeMapping["IDL:Messaging/VectorClock:1.0"], omniORB.tcInternal.tv_long), (), None)
 Receiver._d_get_id = ((), (omniORB.tcInternal.tv_long, ), None)
 
 # Receiver object reference

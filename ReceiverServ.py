@@ -9,11 +9,11 @@ class MessageServer(Messaging__POA.Receiver):
 		self.events = []
 		self.recs = {}
 		self.recs_q = {}
-		self.tic = 0
 		self.ends = 0
 		
 	def send(self, m_id, ts, v):
-		self.send_c((m_id, ts, v))
+		rtic = dict([(c.id, c.ts) for c in ts])
+		self.send_c((m_id, rtic, v))
 
 	def get_id(self):
 		return self.my_id
@@ -24,6 +24,7 @@ class MessageServer(Messaging__POA.Receiver):
 		recs = self.coord.receivers()
 		self.recs = dict([(x.get_id(), x) for x in recs])
 		self.recs_q = dict([(x.get_id(), []) for x in recs])
+		self.tic = dict([(x.get_id(), 0) for x in recs])
 
 	def messages(self, size):
 		return [random.sample(self.recs.keys(), 1)[0] for i in range(10)]
@@ -39,20 +40,27 @@ class MessageServer(Messaging__POA.Receiver):
 		while(1):
 			print "doing tick"
 			t = cin()
-			if t >= self.tic:
-				self.tic = t 
-			self.tic = self.tic + 1
+			print "print tick"
+			print t
+			if t != {}:
+				self.tic = dict([(x, max(self.tic[x], t[x])) for x in self.tic.keys()])
+			else:
+				self.tic = self.tic.copy()
+			self.tic[self.my_id] = self.tic[self.my_id] + 1
+			print "Printing Clock"
+			print self.tic
 			cout(self.tic) 
 
 	def do_event(self, m, tout, tin, eout, v):
 		print "doing event"
-		tout(0)
+		tout({})
 		mtic = tin()
 		if(m == self.my_id):
 			eout((m, mtic, v, "loc"))
 		else:
 			eout((m, mtic, v, "send"))
-			self.recs[m].send(self.my_id, mtic, v * 2)
+			stic = [Messaging.Clock(x, mtic[x]) for x in mtic.keys()]
+			self.recs[m].send(self.my_id, stic, v * 2)
 	
 	@process
 	def do_sends(self, tout, tin, eout, fout):
