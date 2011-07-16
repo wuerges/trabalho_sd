@@ -13,10 +13,15 @@ class MessageServer(Messaging__POA.Receiver):
 		self.ends = 0
 		self.infile = infile
 		
+	@process
+	def send_helper(self, sin, eout, tout, tin):
+		msg = (m_id, ts, v, t) = sin()
+		eout(msg)
+		tout(ts)
+		tin()
+
 	def send(self, m_id, ts, v):
-		self.tout(ts)
-		self.eout((m_id, ts, v, "recv"))
-		self.tin()
+		self.send_c((m_id, ts, v, "recv"))
 
 	def get_id(self):
 		return self.my_id
@@ -63,10 +68,6 @@ class MessageServer(Messaging__POA.Receiver):
 		for m in ms:
 			self.do_event(m, tout, tin, eout, 1)
 		self.do_event(1, tout, tin, eout, -1)
-		fout(0)
-		#never will receive
-		if len(self.recs.keys()) == 1:
-			fout(0)
 
 	@process
 	def do_receives(self, tout, tin, ein, fout):
@@ -75,6 +76,7 @@ class MessageServer(Messaging__POA.Receiver):
 			msg = ein()
 			(origin, tic, v, tp) = msg
 			self.recs_q[origin].append(msg)
+			self.events.append(msg)
 
 			if v < 0:
 				self.ends = self.ends + 1
@@ -85,7 +87,6 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def do_finish(self, fin, tout, eout):
 		fin()
-		fin()
 		tout.poison()
 		eout.poison()
 
@@ -93,17 +94,18 @@ class MessageServer(Messaging__POA.Receiver):
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
+		send_c = Channel("event")
 		f_c = Channel("finish")
 
-		self.tin = tout_c.reader()
-		self.tout = tin_c.writer()
-		self.eout = event_c.writer()
+		self.send_c = send_c.writer()
 
 		self.init_receivers()
 
 
 		Parallel(
 			self.do_tics(tin_c.reader(), tout_c.writer()),
+				self.send_helper(send_c.reader(), event_c.writer(),
+					tin_c.writer(), tout_c.reader()),
 			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer(),
 				f_c.writer()),
 			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
