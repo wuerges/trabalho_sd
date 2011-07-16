@@ -4,8 +4,15 @@
 #
 
 import CORBA, Fortune
+import CosNaming
 orb = CORBA.ORB_init()
-o = orb.string_to_object("IOR:010000001d00000049444c3a466f7274756e652f436f6f6b69655365727665723a312e3000000000010000000000000060000000010102000900000031302e302e302e390000ca820e000000fe89e3204e00005261000000000000000200000000000000080000000100000000545441010000001c00000001000000010001000100000001000105090101000100000009010100")
+
+# Obtain a reference to the root naming context
+obj         = orb.resolve_initial_references("NameService")
+name_server = obj._narrow(CosNaming.NamingContext)
+
+cs_name = [CosNaming.NameComponent("cookies", "chocolate")]
+o = name_server.resolve(cs_name)
 o = o._narrow(Fortune.CookieServer)
 print o.get_cookie()
 
