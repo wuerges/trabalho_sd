@@ -16,13 +16,13 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def send_helper(self, sin, eout, tout, tin):
 		while 1:
-			msg = (m_id, ts, v, t) = sin()
+			msg = (from_id, to_id, ts, v, t) = sin()
 			tout(ts)
 			tin()
 			eout(msg)
 
 	def send(self, m_id, ts, v):
-		self.send_c((m_id, ts, v, "recv"))
+		self.send_c((m_id, self.my_id, ts, v, "recv"))
 
 	def get_id(self):
 		return self.my_id
@@ -53,11 +53,13 @@ class MessageServer(Messaging__POA.Receiver):
 	def do_event(self, m, tout, tin, eout, v):
 		tout(0)
 		mtic = tin()
+		# if this is a local event
 		if(m == 0):
-			eout((self.my_id, mtic, v, "loc"))
+			eout((self.my_id, self.my_id, mtic, v, "loc"))
+		# if this is a send event
 		else:
 			for k in [x for x in self.recs.keys() if x != self.my_id]:
-				eout((k, mtic, v, "send"))
+				eout((self.my_id, k, mtic, v, "send"))
 				self.recs[k].send(self.my_id, mtic, v * 2)
 	
 	@process
@@ -77,7 +79,7 @@ class MessageServer(Messaging__POA.Receiver):
 			msg = ein()
 			print "Recording events"
 			print msg
-			(origin, tic, v, tp) = msg
+			(origin, dest, tic, v, tp) = msg
 			self.recs_q[origin].append(msg)
 			self.events.append(msg)
 
