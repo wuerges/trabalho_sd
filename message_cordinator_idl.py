@@ -33,7 +33,7 @@ _0_Messaging._tc_Receiver = omniORB.tcInternal.createTypeCode(_0_Messaging._d_Re
 omniORB.registerType(Receiver._NP_RepositoryId, _0_Messaging._d_Receiver, _0_Messaging._tc_Receiver)
 
 # Receiver operations and attributes
-Receiver._d_send = ((omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long), (), None)
+Receiver._d_send = ((omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long), (), None)
 Receiver._d_get_id = ((), (omniORB.tcInternal.tv_long, ), None)
 
 # Receiver object reference

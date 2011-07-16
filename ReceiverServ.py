@@ -10,9 +10,10 @@ class MessageServer(Messaging__POA.Receiver):
 		self.recs = {}
 		self.recs_q = {}
 		self.tic = 0
+		self.ends = 0
 		
-	def send(self, m_id, ts):
-		self.send_c((m_id, ts))
+	def send(self, m_id, ts, v):
+		self.send_c((m_id, ts, v))
 
 	def get_id(self):
 		return self.my_id
@@ -43,40 +44,52 @@ class MessageServer(Messaging__POA.Receiver):
 			self.tic = self.tic + 1
 			cout(self.tic) 
 
-	def do_event(self, m, tout, tin, eout):
-		# this next 2 lines must be synchronized
+	def do_event(self, m, tout, tin, eout, v):
 		print "doing event"
 		tout(0)
 		mtic = tin()
 		if(m == self.my_id):
-			eout((m, mtic))
+			eout((m, mtic, v * 2))
 		else:
-			self.recs[m].send(self.my_id, mtic)
+			self.recs[m].send(self.my_id, mtic, v)
 	
 	@process
-	def do_sends(self, tout, tin, eout):
+	def do_sends(self, tout, tin, eout, fout):
 		for m in self.messages(10):
-			self.do_event(m, tout, tin, eout)
-		self.do_event(-1, tout, tin, eout)
+			self.do_event(m, tout, tin, eout, 1)
+		for m in self.recs.keys():
+			self.do_event(m, tout, tin, eout, -1)
+		fout(0)
 
 	@process
-	def do_receives(self, tout, tin, eout, sin):
+	def do_receives(self, tout, tin, eout, sin, fout):
 		while 1:
-			(origin, tic) = sin()
+			(origin, tic, v) = sin()
 			tout(tic)
 			t = tin()
-			eout((origin, t))
-			if origin == -1:
-				print "reached end"
-				tout.poison()
-				eout.poison()
-				sin.poison()
+			eout((origin, t, v))
+			if v < 0:
+				print "read end event"
+				self.ends = self.ends + 1
+			# if received end events from all partners
+			if self.ends == (len(self.recs.keys()) - 1):
+				fout(0)
+
+	@process
+	def do_finish(self, fin, tout, eout, sin):
+		fin()
+		fin()
+		tout.poison()
+		eout.poison()
+		sin.poison()
+		print "reached end"
 
 	def do_test(self):
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
 		send_c = Channel("send")
+		f_c = Channel("finish")
 		self.send_c = send_c.writer()
 
 		self.init_receivers()
@@ -85,9 +98,12 @@ class MessageServer(Messaging__POA.Receiver):
 		Parallel(
 			self.do_store_event(event_c.reader()),
 			self.do_tics(tin_c.reader(), tout_c.writer()),
-			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer()),
+			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer(),
+				f_c.writer()),
 			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.writer(),
-				send_c.reader()),
+				send_c.reader(), f_c.writer()),
+			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer(),
+				send_c.writer())
 		)
 
 		print self.events
