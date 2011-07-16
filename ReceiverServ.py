@@ -29,7 +29,8 @@ class CoordinatorServer(Messaging__POA.Coordinator):
 
 	def register(self, rec):
 		self.msgs.append(rec)
-		return len(self.msgs)
+		r = self.gen_num()
+		return r
 
 	def unregister(self, rec):
 		print self.msgs
