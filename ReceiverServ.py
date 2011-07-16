@@ -3,7 +3,7 @@ import time, sys, random
 from pycsp import *
 
 class MessageServer(Messaging__POA.Receiver):
-	def __init__(self, coord):
+	def __init__(self, coord, infile=None):
 		self.coord = coord
 		self.my_id = coord.register(self._this())
 		self.events = []
@@ -11,6 +11,7 @@ class MessageServer(Messaging__POA.Receiver):
 		self.recs_q = {}
 		self.tic = 0
 		self.ends = 0
+		self.infile = infile
 		
 	def send(self, m_id, ts, v):
 		self.send_c((m_id, ts, v))
@@ -26,7 +27,11 @@ class MessageServer(Messaging__POA.Receiver):
 		self.recs_q = dict([(x.get_id(), []) for x in recs])
 
 	def messages(self, size):
-		return [random.sample(self.recs.keys(), 1)[0] for i in range(5)]
+		if(self.infile == None):
+			return [random.sample([0,1], 1)[0] for i in range(size)]
+		else:
+			f = open(infile)
+			return [int(s) for s in f.readlines]
 	
 	@process
 	def do_store_event(self, ein):
@@ -45,18 +50,20 @@ class MessageServer(Messaging__POA.Receiver):
 	def do_event(self, m, tout, tin, eout, v):
 		tout(0)
 		mtic = tin()
-		if(m == self.my_id):
+		if(m == 0):
 			eout((m, mtic, v, "loc"))
 		else:
-			eout((m, mtic, v, "send"))
-			self.recs[m].send(self.my_id, mtic, v * 2)
+			for k in [x for x in self.recs.keys() if x != self.my_id]:
+				eout((k, mtic, v, "send"))
+				self.recs[k].send(self.my_id, mtic, v * 2)
 	
 	@process
 	def do_sends(self, tout, tin, eout, fout):
-		for m in self.messages(10):
+		ms = self.messages(5)
+		print "messages: " + str(ms)
+		for m in ms:
 			self.do_event(m, tout, tin, eout, 1)
-		for m in self.recs.keys():
-			self.do_event(m, tout, tin, eout, -1)
+		self.do_event(1, tout, tin, eout, -1)
 		fout(0)
 		#never will receive
 		if len(self.recs.keys()) == 1:
