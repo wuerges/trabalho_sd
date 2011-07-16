@@ -33,7 +33,8 @@ _0_Messaging._tc_Receiver = omniORB.tcInternal.createTypeCode(_0_Messaging._d_Re
 omniORB.registerType(Receiver._NP_RepositoryId, _0_Messaging._d_Receiver, _0_Messaging._tc_Receiver)
 
 # Receiver operations and attributes
-Receiver._d_send = ((omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long), (), None)
+Receiver._d_send = ((omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long), (), None)
+Receiver._d_get_id = ((), (omniORB.tcInternal.tv_long, ), None)
 
 # Receiver object reference
 class _objref_Receiver (CORBA.Object):
@@ -45,7 +46,10 @@ class _objref_Receiver (CORBA.Object):
     def send(self, *args):
         return _omnipy.invoke(self, "send", _0_Messaging.Receiver._d_send, args)
 
-    __methods__ = ["send"] + CORBA.Object.__methods__
+    def get_id(self, *args):
+        return _omnipy.invoke(self, "get_id", _0_Messaging.Receiver._d_get_id, args)
+
+    __methods__ = ["send", "get_id"] + CORBA.Object.__methods__
 
 omniORB.registerObjref(Receiver._NP_RepositoryId, _objref_Receiver)
 _0_Messaging._objref_Receiver = _objref_Receiver
@@ -57,7 +61,7 @@ class Receiver (PortableServer.Servant):
     _NP_RepositoryId = _0_Messaging.Receiver._NP_RepositoryId
 
 
-    _omni_op_d = {"send": _0_Messaging.Receiver._d_send}
+    _omni_op_d = {"send": _0_Messaging.Receiver._d_send, "get_id": _0_Messaging.Receiver._d_get_id}
 
 Receiver._omni_skeleton = Receiver
 _0_Messaging__POA.Receiver = Receiver
