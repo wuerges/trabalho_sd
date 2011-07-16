@@ -96,6 +96,7 @@ omniORB.registerType(Coordinator._NP_RepositoryId, _0_Messaging._d_Coordinator, 
 
 # Coordinator operations and attributes
 Coordinator._d_register = ((omniORB.typeMapping["IDL:Messaging/Receiver:1.0"], ), (omniORB.tcInternal.tv_long, ), None)
+Coordinator._d_unregister = ((omniORB.typeMapping["IDL:Messaging/Receiver:1.0"], ), (), None)
 Coordinator._d_ready = ((), (omniORB.tcInternal.tv_boolean, ), None)
 Coordinator._d_receivers = ((), (omniORB.typeMapping["IDL:Messaging/ReceiverSeq:1.0"], ), None)
 
@@ -109,13 +110,16 @@ class _objref_Coordinator (CORBA.Object):
     def register(self, *args):
         return _omnipy.invoke(self, "register", _0_Messaging.Coordinator._d_register, args)
 
+    def unregister(self, *args):
+        return _omnipy.invoke(self, "unregister", _0_Messaging.Coordinator._d_unregister, args)
+
     def ready(self, *args):
         return _omnipy.invoke(self, "ready", _0_Messaging.Coordinator._d_ready, args)
 
     def receivers(self, *args):
         return _omnipy.invoke(self, "receivers", _0_Messaging.Coordinator._d_receivers, args)
 
-    __methods__ = ["register", "ready", "receivers"] + CORBA.Object.__methods__
+    __methods__ = ["register", "unregister", "ready", "receivers"] + CORBA.Object.__methods__
 
 omniORB.registerObjref(Coordinator._NP_RepositoryId, _objref_Coordinator)
 _0_Messaging._objref_Coordinator = _objref_Coordinator
@@ -127,7 +131,7 @@ class Coordinator (PortableServer.Servant):
     _NP_RepositoryId = _0_Messaging.Coordinator._NP_RepositoryId
 
 
-    _omni_op_d = {"register": _0_Messaging.Coordinator._d_register, "ready": _0_Messaging.Coordinator._d_ready, "receivers": _0_Messaging.Coordinator._d_receivers}
+    _omni_op_d = {"register": _0_Messaging.Coordinator._d_register, "unregister": _0_Messaging.Coordinator._d_unregister, "ready": _0_Messaging.Coordinator._d_ready, "receivers": _0_Messaging.Coordinator._d_receivers}
 
 Coordinator._omni_skeleton = Coordinator
 _0_Messaging__POA.Coordinator = Coordinator
