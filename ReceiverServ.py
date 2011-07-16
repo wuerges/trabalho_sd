@@ -67,26 +67,30 @@ class MessageServer(Messaging__POA.Receiver):
 		for m in ms:
 			self.do_event(m, tout, tin, eout, 1)
 		self.do_event(1, tout, tin, eout, -1)
-		self.do_event(0, tout, tin, eout, -1)
+		self.do_event(0, tout, tin, eout, -2)
+		fout(0)
 
 	@process
 	def do_receives(self, tout, tin, ein, fout):
 		while 1:
 			#received a message!
 			msg = ein()
+			print "Recording events"
+			print msg
 			(origin, tic, v, tp) = msg
 			self.recs_q[origin].append(msg)
 			self.events.append(msg)
 
-			if v < 0:
+			if v == -2:
 				self.ends = self.ends + 1
+				print "poison: " + str(v) +" "+ str(self.ends)
 			# if received end events from all partners
 			if self.ends == (len(self.recs.keys())):
 				fout(0)
 
 	@process
 	def do_finish(self, fin, tout, eout):
-
+		fin()
 		fin()
 		tout.poison()
 		eout.poison()
