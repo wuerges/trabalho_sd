@@ -3,17 +3,26 @@ import time, sys, random
 from pycsp import *
 
 class MessageServer(Messaging__POA.Receiver):
-	def __init__(self, coord):
+	def __init__(self, coord, infile=None):
 		self.coord = coord
 		self.my_id = coord.register(self._this())
 		self.events = []
 		self.recs = {}
 		self.recs_q = {}
+		self.tic = 0
 		self.ends = 0
+		self.infile = infile
 		
+	@process
+	def send_helper(self, sin, eout, tout, tin):
+		while 1:
+			msg = (m_id, ts, v, t) = sin()
+			tout(ts)
+			tin()
+			eout(msg)
+
 	def send(self, m_id, ts, v):
-		rtic = dict([(c.id, c.ts) for c in ts])
-		self.send_c((m_id, rtic, v))
+		self.send_c((m_id, ts, v, "recv"))
 
 	def get_id(self):
 		return self.my_id
@@ -24,101 +33,101 @@ class MessageServer(Messaging__POA.Receiver):
 		recs = self.coord.receivers()
 		self.recs = dict([(x.get_id(), x) for x in recs])
 		self.recs_q = dict([(x.get_id(), []) for x in recs])
-		self.tic = dict([(x.get_id(), 0) for x in recs])
 
 	def messages(self, size):
-		return [random.sample(self.recs.keys(), 1)[0] for i in range(10)]
-	
-	@process
-	def do_store_event(self, ein):
-		while(1):
-			print "doing store"
-			self.events.append(ein())
+		if(self.infile == None):
+			return [random.sample([0,1], 1)[0] for i in range(size)]
+		else:
+			f = open(infile)
+			return [int(s) for s in f.readlines]
 
 	@process
 	def do_tics(self, cin, cout):
 		while(1):
-			print "doing tick"
 			t = cin()
-			print "print tick"
-			print t
-			if t != {}:
-				self.tic = dict([(x, max(self.tic[x], t[x])) for x in self.tic.keys()])
-			else:
-				self.tic = self.tic.copy()
-			self.tic[self.my_id] = self.tic[self.my_id] + 1
-			print "Printing Clock"
-			print self.tic
+			if  t > self.tic:
+				self.tic = t
+			self.tic = self.tic + 1
 			cout(self.tic) 
 
 	def do_event(self, m, tout, tin, eout, v):
-		print "doing event"
-		tout({})
+		tout(0)
 		mtic = tin()
-		if(m == self.my_id):
-			eout((m, mtic, v, "loc"))
+		if(m == 0):
+			eout((self.my_id, mtic, v, "loc"))
 		else:
-			eout((m, mtic, v, "send"))
-			stic = [Messaging.Clock(x, mtic[x]) for x in mtic.keys()]
-			self.recs[m].send(self.my_id, stic, v * 2)
+			for k in [x for x in self.recs.keys() if x != self.my_id]:
+				eout((k, mtic, v, "send"))
+				self.recs[k].send(self.my_id, mtic, v * 2)
 	
 	@process
 	def do_sends(self, tout, tin, eout, fout):
-		for m in self.messages(10):
+		ms = self.messages(5)
+		print "messages: " + str(ms)
+		for m in ms:
 			self.do_event(m, tout, tin, eout, 1)
-		for m in self.recs.keys():
-			self.do_event(m, tout, tin, eout, -1)
+		self.do_event(1, tout, tin, eout, -1)
+		self.do_event(0, tout, tin, eout, -2)
 		fout(0)
-		#never will receive
-		if len(self.recs.keys()) == 1:
-			fout(0)
 
 	@process
-	def do_receives(self, tout, tin, eout, sin, fout):
+	def do_receives(self, tout, tin, ein, fout):
 		while 1:
-			(origin, tic, v) = sin()
-			tout(tic)
-			t = tin()
-			eout((origin, t, v, "rec"))
-			if v < 0:
-				print "read end event"
+			#received a message!
+			msg = ein()
+			print "Recording events"
+			print msg
+			(origin, tic, v, tp) = msg
+			self.recs_q[origin].append(msg)
+			self.events.append(msg)
+
+			if v == -2:
 				self.ends = self.ends + 1
+				print "poison: " + str(v) +" "+ str(self.ends)
 			# if received end events from all partners
-			if self.ends == (len(self.recs.keys()) - 1):
+			if self.ends == (len(self.recs.keys())):
 				fout(0)
 
 	@process
-	def do_finish(self, fin, tout, eout, sin):
+	def do_finish(self, fin, tout, eout):
 		fin()
 		fin()
 		tout.poison()
 		eout.poison()
-		sin.poison()
-		print "reached end"
+		self.send_c.poison()
 
 	def do_test(self):
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
-		send_c = Channel("send")
+		send_c = Channel("event")
 		f_c = Channel("finish")
+
 		self.send_c = send_c.writer()
 
 		self.init_receivers()
 
 
 		Parallel(
-			self.do_store_event(event_c.reader()),
 			self.do_tics(tin_c.reader(), tout_c.writer()),
+
+			self.send_helper(send_c.reader(), event_c.writer(),
+				tin_c.writer(), tout_c.reader()),
+
 			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer(),
 				f_c.writer()),
-			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.writer(),
-				send_c.reader(), f_c.writer()),
-			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer(),
-				send_c.writer())
+			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
+				f_c.writer()),
+			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer())
 		)
 
-		print self.events
+		print "This client id: " + str(self.my_id)
+		print "Recorded events"
+		print "\n".join([str(x) for x in self.events])
+		print "Recorded event queues"
+		for ek in self.recs_q.keys():
+			print "\n".join([str(e) for e in self.recs_q[ek]])
+
 		self.coord.unregister(self.my_id)
 
 class CoordinatorServer(Messaging__POA.Coordinator):
