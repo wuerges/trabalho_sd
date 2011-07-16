@@ -61,15 +61,16 @@ class MessageServer(Messaging__POA.Receiver):
 
 	@process
 	def do_receives(self, tout, tin, eout, sin):
-		(origin, tic) = sin()
-		tout(tic)
-		t = tin()
-		eout((origin, t))
-		if origin == -1:
-			print "reached end"
-			tout.poison()
-			eout.poison()
-			sin.poison()
+		while 1:
+			(origin, tic) = sin()
+			tout(tic)
+			t = tin()
+			eout((origin, t))
+			if origin == -1:
+				print "reached end"
+				tout.poison()
+				eout.poison()
+				sin.poison()
 
 	def do_test(self):
 		tin_c = Channel("tics-in")
