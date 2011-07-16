@@ -96,7 +96,7 @@ omniORB.registerType(Coordinator._NP_RepositoryId, _0_Messaging._d_Coordinator, 
 
 # Coordinator operations and attributes
 Coordinator._d_register = ((omniORB.typeMapping["IDL:Messaging/Receiver:1.0"], ), (omniORB.tcInternal.tv_long, ), None)
-Coordinator._d_unregister = ((omniORB.typeMapping["IDL:Messaging/Receiver:1.0"], ), (), None)
+Coordinator._d_unregister = ((omniORB.tcInternal.tv_long, ), (), None)
 Coordinator._d_ready = ((), (omniORB.tcInternal.tv_boolean, ), None)
 Coordinator._d_receivers = ((), (omniORB.typeMapping["IDL:Messaging/ReceiverSeq:1.0"], ), None)
 

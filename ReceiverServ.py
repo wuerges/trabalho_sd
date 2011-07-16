@@ -14,33 +14,32 @@ class MessageServer(Messaging__POA.Receiver):
 			time.sleep(1)
 		recs = self.coord.receivers()
 		map(lambda x: x.send(self.my_id, 0), recs)
-		self.coord.unregister(self._this())
+		self.coord.unregister(self.my_id)
 
 class CoordinatorServer(Messaging__POA.Coordinator):
 	def __init__(self, num):
 		self.num = num
-		self.msgs = {}
+		self.msgs = []
 
-	def gen(self):
-		def fib():
-			i = 1
-			while 1:
-				yield i
-				i = i + 1
+	def gen_num(self):
+		i = 1
+		while 1:
+			yield i
+			i = i + 1
 
 	def register(self, rec):
-		r = self.gen()
-		self.msgs[r] = rec
-		return r
+		self.msgs.append(rec)
+		return len(self.msgs)
 
 	def unregister(self, rec):
+		print self.msgs
 		self.msgs.remove(rec)
 
 	def ready(self):
 		return len(self.msgs) == self.num
 
 	def receivers(self):
-		return self.msgs.values
+		return self.msgs
 
 	def terminate(self):
 		sys.exit(0)
