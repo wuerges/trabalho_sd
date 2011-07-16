@@ -1,0 +1,18 @@
+
+// Interface for the messaging cordination
+
+
+module Messaging {
+	interface Receiver {
+		void send(in long id, in long ts);
+	};
+
+	typedef sequence<Receiver> ReceiverSeq;
+
+	interface Cordinator {
+		long register();
+		boolean ready();
+		ReceiverSeq receivers();
+	};
+};
+
