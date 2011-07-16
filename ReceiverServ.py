@@ -15,10 +15,11 @@ class MessageServer(Messaging__POA.Receiver):
 		
 	@process
 	def send_helper(self, sin, eout, tout, tin):
-		msg = (m_id, ts, v, t) = sin()
-		tout(ts)
-		tin()
-		eout(msg)
+		while 1:
+			msg = (m_id, ts, v, t) = sin()
+			tout(ts)
+			tin()
+			eout(msg)
 
 	def send(self, m_id, ts, v):
 		self.send_c((m_id, ts, v, "recv"))
