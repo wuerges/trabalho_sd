@@ -17,7 +17,6 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def help_send(self, sin, eout, tout, tin):
 		while 1:
-			print "help_send"
 			(m_id, ts, v) = sin()
 			tout(ts)
 			tin()
@@ -46,7 +45,6 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def do_tics(self, cin, cout):
 		while(1):
-			print "wait for tic"
 			t = cin()
 			if  t > self.tic:
 				self.tic = t
@@ -56,14 +54,12 @@ class MessageServer(Messaging__POA.Receiver):
 	def do_event(self, m, tout, tin, eout, v):
 		tout(0)
 		mtic = tin()
-		print "got tic"
 		if(m == 0):
 			eout((self.my_id, mtic, v, "loc"))
 		else:
 			for k in [x for x in self.recs.keys() if x != self.my_id]:
 				eout((k, mtic, v, "send"))
 				self.recs[k].send(self.my_id, mtic, v * 2)
-		print "did event"
 	
 	@process
 	def do_sends(self, tout, tin, eout, fout):
@@ -72,26 +68,20 @@ class MessageServer(Messaging__POA.Receiver):
 		for m in ms:
 			self.do_event(m, tout, tin, eout, 1)
 		self.do_event(1, tout, tin, eout, -1)
-		print "emiting fout event"
 		fout(0)
 		#never will receive
 		if len(self.recs.keys()) == 1:
-			print "emiting fout event"
 			fout(0)
 
 	@process
 	def do_receives(self, tout, tin, ein, fout):
 		while 1:
 			#received a message!
-			print "wait for msg"
 			msg = ein()
-			print "print msg"
-			print msg
 			(origin, tic, v, tp) = msg
 			self.recs_q[origin].append(msg)
 
 			if v < 0:
-				print "end event"
 				self.ends = self.ends + 1
 			# if received end events from all partners
 			if self.ends == (len(self.recs.keys())):
@@ -100,9 +90,7 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def do_finish(self, fin, tout, eout):
 		fin()
-		print "fin 1"
 		fin()
-		print "fin 2"
 		tout.poison()
 		eout.poison()
 		self.send_c.poison()
