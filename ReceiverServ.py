@@ -39,7 +39,7 @@ class MessageServer(Messaging__POA.Receiver):
 		while(1):
 			print "doing tick"
 			t = cin()
-			if t > self.tic:
+			if t >= self.tic:
 				self.tic = t 
 			self.tic = self.tic + 1
 			cout(self.tic) 
@@ -49,9 +49,10 @@ class MessageServer(Messaging__POA.Receiver):
 		tout(0)
 		mtic = tin()
 		if(m == self.my_id):
-			eout((m, mtic, v * 2))
+			eout((m, mtic, v, "loc"))
 		else:
-			self.recs[m].send(self.my_id, mtic, v)
+			eout((m, mtic, v, "send"))
+			self.recs[m].send(self.my_id, mtic, v * 2)
 	
 	@process
 	def do_sends(self, tout, tin, eout, fout):
@@ -60,6 +61,9 @@ class MessageServer(Messaging__POA.Receiver):
 		for m in self.recs.keys():
 			self.do_event(m, tout, tin, eout, -1)
 		fout(0)
+		#never will receive
+		if len(self.recs.keys()) == 1:
+			fout(0)
 
 	@process
 	def do_receives(self, tout, tin, eout, sin, fout):
@@ -67,7 +71,7 @@ class MessageServer(Messaging__POA.Receiver):
 			(origin, tic, v) = sin()
 			tout(tic)
 			t = tin()
-			eout((origin, t, v))
+			eout((origin, t, v, "rec"))
 			if v < 0:
 				print "read end event"
 				self.ends = self.ends + 1
