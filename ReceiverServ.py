@@ -13,17 +13,10 @@ class MessageServer(Messaging__POA.Receiver):
 		self.ends = 0
 		self.infile = infile
 		
-
-	@process
-	def help_send(self, sin, eout, tout, tin):
-		while 1:
-			(m_id, ts, v) = sin()
-			tout(ts)
-			tin()
-			eout((m_id, ts, v, "recv"))
-
 	def send(self, m_id, ts, v):
-		self.send_c((m_id, ts, v))
+		self.tout(ts)
+		self.eout((m_id, ts, v, "recv"))
+		self.tin()
 
 	def get_id(self):
 		return self.my_id
@@ -55,9 +48,11 @@ class MessageServer(Messaging__POA.Receiver):
 		tout(0)
 		mtic = tin()
 		if(m == 0):
+			print "generating local event!"
 			eout((self.my_id, mtic, v, "loc"))
 		else:
 			for k in [x for x in self.recs.keys() if x != self.my_id]:
+				print "generating send event!"
 				eout((k, mtic, v, "send"))
 				self.recs[k].send(self.my_id, mtic, v * 2)
 	
@@ -93,23 +88,22 @@ class MessageServer(Messaging__POA.Receiver):
 		fin()
 		tout.poison()
 		eout.poison()
-		self.send_c.poison()
 
 	def do_test(self):
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
-		send_c = Channel("event")
 		f_c = Channel("finish")
-		self.send_c = send_c.writer()
+
+		self.tin = tout_c.reader()
+		self.tout = tin_c.writer()
+		self.eout = event_c.writer()
 
 		self.init_receivers()
 
 
 		Parallel(
 			self.do_tics(tin_c.reader(), tout_c.writer()),
-			self.help_send(send_c.reader(), event_c.writer(),
-				tin_c.writer(), tout_c.reader()),
 			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer(),
 				f_c.writer()),
 			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
@@ -117,6 +111,7 @@ class MessageServer(Messaging__POA.Receiver):
 			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer())
 		)
 
+		print "This client id: " + str(self.my_id)
 		print "Recorded events"
 		print "\n".join([str(x) for x in self.events])
 		print "Recorded event queues"
