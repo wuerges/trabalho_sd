@@ -19,7 +19,7 @@ class MessageServer(Messaging__POA.Receiver):
 class CoordinatorServer(Messaging__POA.Coordinator):
 	def __init__(self, num):
 		self.num = num
-		self.msgs = []
+		self.msgs = {}
 
 	def gen_num(self):
 		i = 1
@@ -28,21 +28,16 @@ class CoordinatorServer(Messaging__POA.Coordinator):
 			i = i + 1
 
 	def register(self, rec):
-		self.msgs.append(rec)
-		r = self.gen_num()
+		r = self.gen_num().next()
+		self.msgs[r] = rec
 		return r
 
 	def unregister(self, rec):
 		print self.msgs
-		self.msgs.remove(rec)
+		del self.msgs[rec]
 
 	def ready(self):
 		return len(self.msgs) == self.num
 
 	def receivers(self):
-		return self.msgs
-
-	def terminate(self):
-		sys.exit(0)
-
-
+		return self.msgs.values()
