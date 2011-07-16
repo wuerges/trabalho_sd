@@ -11,7 +11,7 @@ module Messaging {
 
 	interface Coordinator {
 		long register(in Receiver rec);
-		void unregister(in Receiver rec);
+		void unregister(in long id);
 		boolean ready();
 		ReceiverSeq receivers();
 	};
