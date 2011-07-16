@@ -1,0 +1,8 @@
+
+// fortune.idl -- the interface definition
+module Fortune {
+  interface CookieServer {
+    string get_cookie();
+  };
+};
+
