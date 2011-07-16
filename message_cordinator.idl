@@ -5,6 +5,7 @@
 module Messaging {
 	interface Receiver {
 		void send(in long id, in long ts);
+		long get_id();
 	};
 
 	typedef sequence<Receiver> ReceiverSeq;
