@@ -17,7 +17,7 @@ poa._get_the_POAManager().activate()
 obj         = orb.resolve_initial_references("NameService")
 name_server = obj._narrow(CosNaming.NamingContext)
 
-servant = CoordinatorServer(1)
+servant = CoordinatorServer(int(sys.argv[1]))
 
 poa.activate_object(servant)
 cs_name = [CosNaming.NameComponent("messaging", "coordinator")]

@@ -12,7 +12,7 @@ class MessageServer(Messaging__POA.Receiver):
 		self.tic = 0
 		
 	def send(self, m_id, ts):
-		print m_id, ts
+		self.send_c((m_id, ts))
 
 	def get_id(self):
 		return self.my_id
@@ -57,25 +57,36 @@ class MessageServer(Messaging__POA.Receiver):
 	def do_sends(self, tout, tin, eout):
 		for m in self.messages(10):
 			self.do_event(m, tout, tin, eout)
-		eout.poison()
-		tout.poison()
+		self.do_event(-1, tout, tin, eout)
 
 	@process
-	def do_receives(self, tout, tin, eout):
-		print "doing receive"
+	def do_receives(self, tout, tin, eout, sin):
+		(origin, tic) = sin()
+		tout(tic)
+		t = tin()
+		eout((origin, t))
+		if origin == -1:
+			print "reached end"
+			tout.poison()
+			eout.poison()
+			sin.poison()
 
 	def do_test(self):
-		self.init_receivers()
-
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
+		send_c = Channel("send")
+		self.send_c = send_c.writer()
+
+		self.init_receivers()
+
 
 		Parallel(
 			self.do_store_event(event_c.reader()),
 			self.do_tics(tin_c.reader(), tout_c.writer()),
 			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer()),
-			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.writer()),
+			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.writer(),
+				send_c.reader()),
 		)
 
 		print self.events
@@ -85,6 +96,8 @@ class CoordinatorServer(Messaging__POA.Coordinator):
 	def __init__(self, num):
 		self.num = num
 		self.msgs = {}
+		self.id_gen = self.gen_num()
+		self.ready_v = False
 
 	def gen_num(self):
 		i = 1
@@ -93,16 +106,23 @@ class CoordinatorServer(Messaging__POA.Coordinator):
 			i = i + 1
 
 	def register(self, rec):
-		r = self.gen_num().next()
+		r = self.id_gen.next()
+		print "registered " + str(r)
 		self.msgs[r] = rec
 		return r
 
 	def unregister(self, rec):
 		print self.msgs
 		del self.msgs[rec]
+		if self.msgs == {}:
+			self.ready_v = False
 
 	def ready(self):
-		return len(self.msgs) == self.num
+		print "ready? " + str(len(self.msgs)) + " " + str(self.num)
+		print self.msgs.keys()
+		if not self.ready_v:
+			self.ready_v = len(self.msgs.keys()) >= self.num
+		return self.ready_v
 
 	def receivers(self):
 		return self.msgs.values()
