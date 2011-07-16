@@ -15,10 +15,12 @@ class MessageServer(Messaging__POA.Receiver):
 		
 
 	@process
-	def help_send(self, sin, eout):
+	def help_send(self, sin, eout, tout, tin):
 		while 1:
 			print "help_send"
 			(m_id, ts, v) = sin()
+			tout(ts)
+			tin()
 			eout((m_id, ts, v, "recv"))
 
 	def send(self, m_id, ts, v):
@@ -118,7 +120,8 @@ class MessageServer(Messaging__POA.Receiver):
 
 		Parallel(
 			self.do_tics(tin_c.reader(), tout_c.writer()),
-			self.help_send(send_c.reader(), event_c.writer()),
+			self.help_send(send_c.reader(), event_c.writer(),
+				tin_c.writer(), tout_c.reader()),
 			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer(),
 				f_c.writer()),
 			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
