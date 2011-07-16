@@ -3,8 +3,14 @@
 
 
 module Messaging {
+	struct Clock {
+		long id;
+		long ts;
+	};
+	typedef sequence<Clock> VectorClock;
+
 	interface Receiver {
-		void send(in long id, in long ts, in long value);
+		void send(in long id, in VectorClock ts, in long value);
 		long get_id();
 	};
 
