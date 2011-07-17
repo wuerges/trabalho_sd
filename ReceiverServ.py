@@ -56,13 +56,14 @@ class MessageServer(Messaging__POA.Receiver):
 	def do_tics(self, cin, cout):
 		while(1):
 			t = cin()
-			if  t > self.tic:
+			if t > self.tic:
 				self.tic = t
-			self.tic = self.tic + 1
+			if t != 0:
+				self.tic = self.tic + 1
 			cout(self.tic) 
 
 	def do_event(self, m, tout, tin, eout, v):
-		tout(0)
+		tout(1)
 		mtic = tin()
 		# if this is a local event
 		if(m == 0):
