@@ -2,6 +2,17 @@ import CORBA, Messaging, Messaging__POA
 import time, sys, random
 from pycsp import *
 
+class Message:
+	def __init__(self, from_, to, ts, v, t):
+		self.origin = from_
+		self.dest = to
+		self.ts = ts
+		self.v = v
+		self.t = t
+
+	def __str__(self):
+		return "Message(" + str((self.origin, self.dest, self.ts, self.v, self.t))
+
 class MessageServer(Messaging__POA.Receiver):
 	def __init__(self, coord, infile=None):
 		self.coord = coord
@@ -16,13 +27,13 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def send_helper(self, sin, eout, tout, tin):
 		while 1:
-			msg = (m_id, ts, v, t) = sin()
-			tout(ts)
+			msg = sin()
+			tout(msg.ts)
 			tin()
 			eout(msg)
 
 	def send(self, m_id, ts, v):
-		self.send_c((m_id, ts, v, "recv"))
+		self.send_c(Message(m_id, self.my_id, ts, v, "recv"))
 
 	def get_id(self):
 		return self.my_id
@@ -53,11 +64,13 @@ class MessageServer(Messaging__POA.Receiver):
 	def do_event(self, m, tout, tin, eout, v):
 		tout(0)
 		mtic = tin()
+		# if this is a local event
 		if(m == 0):
-			eout((self.my_id, mtic, v, "loc"))
+			eout(Message(self.my_id, self.my_id, mtic, v, "loc"))
+		# if this is a send event
 		else:
 			for k in [x for x in self.recs.keys() if x != self.my_id]:
-				eout((k, mtic, v, "send"))
+				eout(Message(self.my_id, k, mtic, v, "send"))
 				self.recs[k].send(self.my_id, mtic, v * 2)
 	
 	@process
@@ -70,23 +83,36 @@ class MessageServer(Messaging__POA.Receiver):
 		self.do_event(0, tout, tin, eout, -2)
 		fout(0)
 
+	def do_dequeue(self):
+		while((len(self.recs_q) > 0) and 
+				reduce(lambda r,i: r and i, [len(self.recs_q[x]) != 0 for x in self.recs_q], True)):
+			min_q = min([self.recs_q[x] for x in self.recs_q], key=lambda k : k[0].ts)
+			min_msg = min_q[0]
+			self.events.append(min_msg)
+			print "Ordered event: " + str(min_msg)
+			if min_msg.v == -2:
+				assert(len(self.recs_q[min_msg.origin]) == 1)
+				del self.recs_q[min_msg.origin]
+			del min_q[0]
+
 	@process
 	def do_receives(self, tout, tin, ein, fout):
 		while 1:
 			#received a message!
 			msg = ein()
-			print "Recording events"
-			print msg
-			(origin, tic, v, tp) = msg
-			self.recs_q[origin].append(msg)
-			self.events.append(msg)
+			print "Unnordered event: " + str(msg)
+			self.recs_q[msg.origin].append(msg)
 
-			if v == -2:
+			self.do_dequeue()
+			#self.events.append(msg)
+
+			if msg.v == -2:
 				self.ends = self.ends + 1
-				print "poison: " + str(v) +" "+ str(self.ends)
 			# if received end events from all partners
-			if self.ends == (len(self.recs.keys())):
+
+			if len(self.recs_q) == 0:
 				fout(0)
+
 
 	@process
 	def do_finish(self, fin, tout, eout):
