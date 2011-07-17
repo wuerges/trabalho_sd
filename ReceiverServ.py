@@ -89,9 +89,7 @@ class MessageServer(Messaging__POA.Receiver):
 			min_q = min([self.recs_q[x] for x in self.recs_q], key=lambda k : k[0].ts)
 			min_msg = min_q[0]
 			self.events.append(min_msg)
-			print "dequeued message: " + str(min_msg)
 			if min_msg.v == -2:
-				print "dequeued poison msg"
 				assert(len(self.recs_q[min_msg.origin]) == 1)
 				del self.recs_q[min_msg.origin]
 			del min_q[0]
@@ -101,7 +99,7 @@ class MessageServer(Messaging__POA.Receiver):
 		while 1:
 			#received a message!
 			msg = ein()
-			print "Recording events"
+			print "Recorded event: " + str(msg)
 			self.recs_q[msg.origin].append(msg)
 
 			self.do_dequeue()
@@ -109,13 +107,9 @@ class MessageServer(Messaging__POA.Receiver):
 
 			if msg.v == -2:
 				self.ends = self.ends + 1
-				print "poison: " + str(msg.v) +" "+ str(self.ends)
 			# if received end events from all partners
 
-			print "Qs"
-			print len(self.recs_q)
 			if len(self.recs_q) == 0:
-				print "poison !!!"
 				fout(0)
 
 
