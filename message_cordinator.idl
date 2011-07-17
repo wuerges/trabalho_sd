@@ -4,7 +4,7 @@
 
 module Messaging {
 	interface Receiver {
-		void send(in long id, in long ts, in long value);
+		void send(in long id, in long ts, in long value, in string message);
 		long get_id();
 	};
 
