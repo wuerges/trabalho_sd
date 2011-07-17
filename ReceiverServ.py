@@ -72,6 +72,12 @@ class MessageServer(Messaging__POA.Receiver):
 		self.do_event(0, tout, tin, eout, -2)
 		fout(0)
 
+	def do_dequeue(self):
+		while reduce(lamda r,i: r && i, [len(x) != 0 for x in self.recs_q], True):
+			min_v = min([self.recs_q[x][0] for x in self.recs_q.keys()])
+
+			print red
+
 	@process
 	def do_receives(self, tout, tin, ein, fout):
 		while 1:
@@ -81,7 +87,9 @@ class MessageServer(Messaging__POA.Receiver):
 			print msg
 			(origin, dest, tic, v, tp) = msg
 			self.recs_q[origin].append(msg)
-			self.events.append(msg)
+
+			self.do_dequeue()
+			#self.events.append(msg)
 
 			if v == -2:
 				self.ends = self.ends + 1
