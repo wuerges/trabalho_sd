@@ -58,12 +58,12 @@ class MessageServer(Messaging__POA.Receiver):
 			t = cin()
 			if t > self.tic:
 				self.tic = t
-			if t != 0:
+			if t != -1:
 				self.tic = self.tic + 1
 			cout(self.tic) 
 
 	def do_event(self, m, tout, tin, eout, v):
-		tout(1)
+		tout(0)
 		mtic = tin()
 		# if this is a local event
 		if(m == 0):
