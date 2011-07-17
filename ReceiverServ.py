@@ -89,6 +89,7 @@ class MessageServer(Messaging__POA.Receiver):
 			min_q = min([self.recs_q[x] for x in self.recs_q], key=lambda k : k[0].ts)
 			min_msg = min_q[0]
 			self.events.append(min_msg)
+			print "Ordered event: " + str(min_msg)
 			if min_msg.v == -2:
 				assert(len(self.recs_q[min_msg.origin]) == 1)
 				del self.recs_q[min_msg.origin]
@@ -99,7 +100,7 @@ class MessageServer(Messaging__POA.Receiver):
 		while 1:
 			#received a message!
 			msg = ein()
-			print "Recorded event: " + str(msg)
+			print "Unnordered event: " + str(msg)
 			self.recs_q[msg.origin].append(msg)
 
 			self.do_dequeue()
