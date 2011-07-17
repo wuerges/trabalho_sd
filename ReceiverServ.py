@@ -3,15 +3,16 @@ import time, sys, random
 from pycsp import *
 
 class Message:
-	def __init__(self, from_, to, ts, v, t):
+	def __init__(self, from_, to, ts, v, t, pl):
 		self.origin = from_
 		self.dest = to
 		self.ts = ts
 		self.v = v
 		self.t = t
+		self.payload = pl
 
 	def __str__(self):
-		return "Message(" + str((self.origin, self.dest, self.ts, self.v, self.t))
+		return "M: " + self.t + " origin: " + str(self.origin) + " dest: " + str(self.dest) + " tic: " + str(self.ts) + " locality: " + str(self.v) + " payload: " + self.payload
 
 class MessageServer(Messaging__POA.Receiver):
 	def __init__(self, coord, infile=None):
@@ -32,8 +33,8 @@ class MessageServer(Messaging__POA.Receiver):
 			tin()
 			eout(msg)
 
-	def send(self, m_id, ts, v):
-		self.send_c(Message(m_id, self.my_id, ts, v, "recv"))
+	def send(self, m_id, ts, v, payload):
+		self.send_c(Message(m_id, self.my_id, ts, v, "recv", payload))
 
 	def get_id(self):
 		return self.my_id
@@ -56,31 +57,36 @@ class MessageServer(Messaging__POA.Receiver):
 	def do_tics(self, cin, cout):
 		while(1):
 			t = cin()
-			if  t > self.tic:
+			if t > self.tic:
 				self.tic = t
-			self.tic = self.tic + 1
+			if t != -1:
+				self.tic = self.tic + 1
 			cout(self.tic) 
 
-	def do_event(self, m, tout, tin, eout, v):
-		tout(0)
-		mtic = tin()
-		# if this is a local event
-		if(m == 0):
-			eout(Message(self.my_id, self.my_id, mtic, v, "loc"))
+	def do_local(self, payload, v):
+		self.send_tout(0)
+		mtic = self.send_tin()
+		self.send_eout(Message(self.my_id, self.my_id, mtic, v, "loc", payload))
+
+	def do_remote(self, payload, v):
+		self.send_tout(0)
+		mtic = self.send_tin()
 		# if this is a send event
-		else:
-			for k in [x for x in self.recs.keys() if x != self.my_id]:
-				eout(Message(self.my_id, k, mtic, v, "send"))
-				self.recs[k].send(self.my_id, mtic, v * 2)
+		for k in [x for x in self.recs.keys() if x != self.my_id]:
+			self.send_eout(Message(self.my_id, k, mtic, v, "send", payload))
+			self.recs[k].send(self.my_id, mtic, v * 2, payload)
 	
 	@process
 	def do_sends(self, tout, tin, eout, fout):
 		ms = self.messages(5)
 		print "messages: " + str(ms)
 		for m in ms:
-			self.do_event(m, tout, tin, eout, 1)
-		self.do_event(1, tout, tin, eout, -1)
-		self.do_event(0, tout, tin, eout, -2)
+			if m == 0:
+				self.do_local("<local event>", 1)
+			else:
+				self.do_remote("<send event>", 1)
+		self.do_remote("<EOF remoto>", -1)
+		self.do_local("<EOF local>", -2)
 		fout(0)
 
 	def do_dequeue(self):
@@ -130,6 +136,9 @@ class MessageServer(Messaging__POA.Receiver):
 		f_c = Channel("finish")
 
 		self.send_c = send_c.writer()
+		self.send_tin = tout_c.reader()
+		self.send_tout = tin_c.writer()
+		self.send_eout = event_c.writer()
 
 		self.init_receivers()
 
@@ -140,10 +149,12 @@ class MessageServer(Messaging__POA.Receiver):
 			self.send_helper(send_c.reader(), event_c.writer(),
 				tin_c.writer(), tout_c.reader()),
 
-			self.do_sends(tin_c.writer(), tout_c.reader(), event_c.writer(),
+			self.do_sends(self.send_tout, self.send_tin, self.send_eout,
 				f_c.writer()),
+
 			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
 				f_c.writer()),
+
 			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer())
 		)
 
