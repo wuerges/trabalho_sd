@@ -11,7 +11,7 @@ class Message:
 		self.t = t
 
 	def __str__(self):
-		return "Message(" + str((self.origin, self.dest, self.ts, self.v, self.t))
+		return "M: " + self.t + " origin: " + str(self.origin) + " dest: " + str(self.dest) + " tic: " + str(self.ts) + " locality: " + str(self.v)
 
 class MessageServer(Messaging__POA.Receiver):
 	def __init__(self, coord, infile=None):
