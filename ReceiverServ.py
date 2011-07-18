@@ -104,11 +104,8 @@ class MessageServer(Messaging__POA.Receiver):
 
 	@process
 	def do_finish(self, fin, tout, eout, app):
-		print "DO FINISH"
 		fin()
-		print "DO FINISH 1"
 		fin()
-		print "DO FINISH 2"
 		tout.poison()
 		eout.poison()
 		self.send_c.poison()
@@ -159,8 +156,13 @@ class MessageServer(Messaging__POA.Receiver):
 			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer(), app_c.reader())
 		)
 
-	def app_receive(self):
-		return self.app_in()
+	def app_receive(self, timeout=0.5):
+		tg = TimeoutGuard(seconds=timeout)
+		(g, m) = AltSelect(InputGuard(self.app_in), tg)
+		if g == tg:
+			return (-1, "")
+		else:
+			return (0, m)
 
 	def app_local(self, pl="<local>"):
 		self.do_local(pl, 1)
