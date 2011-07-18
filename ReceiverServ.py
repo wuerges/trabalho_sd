@@ -55,19 +55,23 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def do_tics(self, cin, cout):
 		while(1):
+			print "wait tick"
 			t = cin()
 			if t > self.tic:
 				self.tic = t
 			if t != -1:
 				self.tic = self.tic + 1
+			print "write tick"
 			cout(self.tic) 
 
 	def do_local(self, payload, v):
+		print "doing local"
 		self.send_tout(0)
 		mtic = self.send_tin()
 		self.send_eout(Message(self.my_id, self.my_id, mtic, v, "loc", payload))
 
 	def do_remote(self, payload, v):
+		print "doing remote"
 		self.send_tout(0)
 		mtic = self.send_tin()
 		# if this is a send event
@@ -90,6 +94,7 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def do_receives(self, tout, tin, ein, fout):
 		while 1:
+			print "doing receive"
 			#received a message!
 			msg = ein()
 			print "Unnordered event: " + str(msg)
@@ -122,7 +127,14 @@ class MessageServer(Messaging__POA.Receiver):
 			print "\n".join([str(e) for e in self.recs_q[ek]])
 		self.coord.unregister(self.my_id)
 
-	def app_initialize(self):
+	@process
+	def wrapp_callback(self, callback, fout):
+		callback(self)
+		self.do_remote("<EOF remoto>", -1)
+		self.do_local("<EOF local>", -2)
+		fout(0)
+
+	def app_initialize(self, callback):
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
@@ -136,8 +148,11 @@ class MessageServer(Messaging__POA.Receiver):
 
 		self.init_receivers()
 
+		print "starting parallel"
 		Parallel(
 			self.do_tics(tin_c.reader(), tout_c.writer()),
+
+			self.wrapp_callback(callback, f_c.writer()),
 
 			self.send_helper(send_c.reader(), event_c.writer(),
 				tin_c.writer(), tout_c.reader()),
@@ -150,27 +165,22 @@ class MessageServer(Messaging__POA.Receiver):
 
 	def app_local(self, pl="<local>"):
 		self.do_local(pl, 1)
+
 	def app_send(self, pl="<remote>"):
 		self.do_remote(pl, 1)
 
-
-	def app_finalize(self):
-		self.do_remote("<EOF remoto>", -1)
-		self.do_local("<EOF local>", -2)
-		fout(0)
-
-	def app_test(self):
-		self.app_initialize()
-	
-		ms = self.messages(5)
+	def test_callback(self, msg_s):
+		print "doing callback"
+		ms = msg_s.messages(5)
 		print "messages: " + str(ms)
 		for m in ms:
 			if m == 0:
-				self.do_local("<local event>", 1)
+				msg_s.app_local("<test local>")
 			else:
-				self.do_remote("<send event>", 1)
+				msg_s.app_send("<test send>")
 
-		self.app_finalize()
+	def app_test(self):
+		self.app_initialize(self.test_callback)
 
 class CoordinatorServer(Messaging__POA.Coordinator):
 	def __init__(self, num):
