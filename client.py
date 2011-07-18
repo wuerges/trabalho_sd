@@ -32,6 +32,40 @@ def test_callback(msg_s):
 	print msg_s.app_receive()
 	print "finished callback"
 
+#S1 ( e11, m21, m31, e41, m51, m61)
+def callback_S1(s):
+	s.app_local("e11")
+	s.app_send("m21")
+	s.app_send("m31")
+	s.app_local("e41")
+	s.app_send("m51")
+	s.app_send("m61")
+
+#S2 ( e12, m22, e32, m42, m52, e62, m72)
+def callback_S2(s):
+	s.app_local("e12")
+	s.app_send("m22")
+	s.app_local("e32")
+	s.app_send("m42")
+	s.app_send("m52")
+	s.app_local("e62")
+	s.app_send("m72")
+
+#S3 ( m13, m23, e33, e43, m53, m63)
+def callback_S3(s):
+	s.app_send("m13")
+	s.app_send("m23")
+	s.app_local("e33")
+	s.app_local("e43")
+	s.app_send("m53")
+	s.app_send("m63")
+
+argd = { "S1" : callback_S1, "S2" : callback_S2, "S3" : callback_S3 }
+
 ms = MessageServer(coord)
-ms.start(test_callback)
+if(len(sys.argv) > 1):
+	ms.start(argd[sys.argv[1]])
+
+else:
+	ms.start(test_callback)
 
