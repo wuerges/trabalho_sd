@@ -19,6 +19,19 @@ cs_name = [CosNaming.NameComponent("messaging", "coordinator")]
 coord_o = name_server.resolve(cs_name)
 coord = coord_o._narrow(CoordinatorServer)
 
+def test_callback(msg_s):
+	print "doing callback"
+	ms = [random.sample([0,1], 1)[0] for i in range(5)]
+	print "messages: " + str(ms)
+	for m in ms:
+		if m == 0:
+			msg_s.app_local("<test local>")
+		else:
+			msg_s.app_send("<test send>")
+	print "waiting for message:"
+	print msg_s.app_receive()
+	print "finished callback"
+
 ms = MessageServer(coord)
-ms.do_test()
+ms.start(test_callback)
 

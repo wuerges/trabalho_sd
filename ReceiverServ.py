@@ -15,7 +15,7 @@ class Message:
 		return "M: " + self.t + " origin: " + str(self.origin) + " dest: " + str(self.dest) + " tic: " + str(self.ts) + " locality: " + str(self.v) + " payload: " + self.payload
 
 class MessageServer(Messaging__POA.Receiver):
-	def __init__(self, coord, infile=None):
+	def __init__(self, coord):
 		self.coord = coord
 		self.my_id = coord.register(self._this())
 		self.events = []
@@ -23,7 +23,8 @@ class MessageServer(Messaging__POA.Receiver):
 		self.recs_q = {}
 		self.tic = 0
 		self.ends = 0
-		self.infile = infile
+	def start(self, callback):
+		self.do_initialize(callback)
 		
 	@process
 	def send_helper(self, sin, eout, tout, tin):
@@ -32,7 +33,6 @@ class MessageServer(Messaging__POA.Receiver):
 			tout(msg.ts)
 			tin()
 			eout(msg)
-
 	def send(self, m_id, ts, v, payload):
 		self.send_c(Message(m_id, self.my_id, ts, v, "recv", payload))
 
@@ -45,13 +45,6 @@ class MessageServer(Messaging__POA.Receiver):
 		recs = self.coord.receivers()
 		self.recs = dict([(x.get_id(), x) for x in recs])
 		self.recs_q = dict([(x.get_id(), []) for x in recs])
-
-	def messages(self, size):
-		if(self.infile == None):
-			return [random.sample([0,1], 1)[0] for i in range(size)]
-		else:
-			f = open(infile)
-			return [int(s) for s in f.readlines]
 
 	@process
 	def do_tics(self, cin, cout):
@@ -76,25 +69,15 @@ class MessageServer(Messaging__POA.Receiver):
 			self.send_eout(Message(self.my_id, k, mtic, v, "send", payload))
 			self.recs[k].send(self.my_id, mtic, v * 2, payload)
 	
-	@process
-	def do_sends(self, tout, tin, eout, fout):
-		ms = self.messages(5)
-		print "messages: " + str(ms)
-		for m in ms:
-			if m == 0:
-				self.do_local("<local event>", 1)
-			else:
-				self.do_remote("<send event>", 1)
-		self.do_remote("<EOF remoto>", -1)
-		self.do_local("<EOF local>", -2)
-		fout(0)
-
-	def do_dequeue(self):
+	def do_dequeue(self, app_out):
 		while((len(self.recs_q) > 0) and 
 				reduce(lambda r,i: r and i, [len(self.recs_q[x]) != 0 for x in self.recs_q], True)):
 			min_q = min([self.recs_q[x] for x in self.recs_q], key=lambda k : k[0].ts)
 			min_msg = min_q[0]
 			self.events.append(min_msg)
+			if min_msg.v == 2:
+				print "delivering receive: " + str(min_msg)
+				app_out(min_msg.payload)
 			print "Ordered event: " + str(min_msg)
 			if min_msg.v == -2:
 				assert(len(self.recs_q[min_msg.origin]) == 1)
@@ -102,14 +85,14 @@ class MessageServer(Messaging__POA.Receiver):
 			del min_q[0]
 
 	@process
-	def do_receives(self, tout, tin, ein, fout):
+	def do_receives(self, tout, tin, ein, fout, app_out):
 		while 1:
 			#received a message!
 			msg = ein()
 			print "Unnordered event: " + str(msg)
 			self.recs_q[msg.origin].append(msg)
 
-			self.do_dequeue()
+			self.do_dequeue(app_out)
 			#self.events.append(msg)
 
 			if msg.v == -2:
@@ -119,44 +102,14 @@ class MessageServer(Messaging__POA.Receiver):
 			if len(self.recs_q) == 0:
 				fout(0)
 
-
 	@process
-	def do_finish(self, fin, tout, eout):
+	def do_finish(self, fin, tout, eout, app):
 		fin()
 		fin()
 		tout.poison()
 		eout.poison()
 		self.send_c.poison()
-
-	def do_test(self):
-		tin_c = Channel("tics-in")
-		tout_c = Channel("tics-out")
-		event_c = Channel("event")
-		send_c = Channel("event")
-		f_c = Channel("finish")
-
-		self.send_c = send_c.writer()
-		self.send_tin = tout_c.reader()
-		self.send_tout = tin_c.writer()
-		self.send_eout = event_c.writer()
-
-		self.init_receivers()
-
-
-		Parallel(
-			self.do_tics(tin_c.reader(), tout_c.writer()),
-
-			self.send_helper(send_c.reader(), event_c.writer(),
-				tin_c.writer(), tout_c.reader()),
-
-			self.do_sends(self.send_tout, self.send_tin, self.send_eout,
-				f_c.writer()),
-
-			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
-				f_c.writer()),
-
-			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer())
-		)
+		app.poison()
 
 		print "This client id: " + str(self.my_id)
 		print "Recorded events"
@@ -164,8 +117,58 @@ class MessageServer(Messaging__POA.Receiver):
 		print "Recorded event queues"
 		for ek in self.recs_q.keys():
 			print "\n".join([str(e) for e in self.recs_q[ek]])
-
 		self.coord.unregister(self.my_id)
+
+	@process
+	def wrapp_callback(self, callback, fout):
+		callback(self)
+		self.do_remote("<EOF remoto>", -1)
+		self.do_local("<EOF local>", -2)
+		fout(0)
+
+	def do_initialize(self, callback):
+		tin_c = Channel("tics-in")
+		tout_c = Channel("tics-out")
+		event_c = Channel("event")
+		send_c = Channel("event")
+		f_c = Channel("finish")
+		app_c = Channel("app", buffer=1000)
+
+		self.send_c = send_c.writer()
+		self.send_tin = tout_c.reader()
+		self.send_tout = tin_c.writer()
+		self.send_eout = event_c.writer()
+		self.app_in = app_c.reader()
+
+		self.init_receivers()
+
+		Parallel(
+			self.do_tics(tin_c.reader(), tout_c.writer()),
+
+			self.wrapp_callback(callback, f_c.writer(),),
+
+			self.send_helper(send_c.reader(), event_c.writer(),
+				tin_c.writer(), tout_c.reader()),
+
+			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
+				f_c.writer(), app_c.writer()),
+
+			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer(), app_c.reader())
+		)
+
+	def app_receive(self, timeout=0.5):
+		tg = TimeoutGuard(seconds=timeout)
+		(g, m) = AltSelect(InputGuard(self.app_in), tg)
+		if g == tg:
+			return (-1, "")
+		else:
+			return (0, m)
+
+	def app_local(self, pl="<local>"):
+		self.do_local(pl, 1)
+
+	def app_send(self, pl="<remote>"):
+		self.do_remote(pl, 1)
 
 class CoordinatorServer(Messaging__POA.Coordinator):
 	def __init__(self, num):
