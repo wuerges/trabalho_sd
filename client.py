@@ -28,6 +28,9 @@ def test_callback(msg_s):
 			msg_s.app_local("<test local>")
 		else:
 			msg_s.app_send("<test send>")
+	print "waiting for message:"
+	print msg_s.app_receive()
+	print "finished callback"
 
 ms = MessageServer(coord)
 ms.start(test_callback)

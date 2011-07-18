@@ -49,23 +49,19 @@ class MessageServer(Messaging__POA.Receiver):
 	@process
 	def do_tics(self, cin, cout):
 		while(1):
-			print "wait tick"
 			t = cin()
 			if t > self.tic:
 				self.tic = t
 			if t != -1:
 				self.tic = self.tic + 1
-			print "write tick"
 			cout(self.tic) 
 
 	def do_local(self, payload, v):
-		print "doing local"
 		self.send_tout(0)
 		mtic = self.send_tin()
 		self.send_eout(Message(self.my_id, self.my_id, mtic, v, "loc", payload))
 
 	def do_remote(self, payload, v):
-		print "doing remote"
 		self.send_tout(0)
 		mtic = self.send_tin()
 		# if this is a send event
@@ -73,12 +69,15 @@ class MessageServer(Messaging__POA.Receiver):
 			self.send_eout(Message(self.my_id, k, mtic, v, "send", payload))
 			self.recs[k].send(self.my_id, mtic, v * 2, payload)
 	
-	def do_dequeue(self):
+	def do_dequeue(self, app_out):
 		while((len(self.recs_q) > 0) and 
 				reduce(lambda r,i: r and i, [len(self.recs_q[x]) != 0 for x in self.recs_q], True)):
 			min_q = min([self.recs_q[x] for x in self.recs_q], key=lambda k : k[0].ts)
 			min_msg = min_q[0]
 			self.events.append(min_msg)
+			if min_msg.v == 2:
+				print "delivering receive: " + str(min_msg)
+				app_out(min_msg.payload)
 			print "Ordered event: " + str(min_msg)
 			if min_msg.v == -2:
 				assert(len(self.recs_q[min_msg.origin]) == 1)
@@ -86,15 +85,14 @@ class MessageServer(Messaging__POA.Receiver):
 			del min_q[0]
 
 	@process
-	def do_receives(self, tout, tin, ein, fout):
+	def do_receives(self, tout, tin, ein, fout, app_out):
 		while 1:
-			print "doing receive"
 			#received a message!
 			msg = ein()
 			print "Unnordered event: " + str(msg)
 			self.recs_q[msg.origin].append(msg)
 
-			self.do_dequeue()
+			self.do_dequeue(app_out)
 			#self.events.append(msg)
 
 			if msg.v == -2:
@@ -104,14 +102,17 @@ class MessageServer(Messaging__POA.Receiver):
 			if len(self.recs_q) == 0:
 				fout(0)
 
-
 	@process
-	def do_finish(self, fin, tout, eout):
+	def do_finish(self, fin, tout, eout, app):
+		print "DO FINISH"
 		fin()
+		print "DO FINISH 1"
 		fin()
+		print "DO FINISH 2"
 		tout.poison()
 		eout.poison()
 		self.send_c.poison()
+		app.poison()
 
 		print "This client id: " + str(self.my_id)
 		print "Recorded events"
@@ -134,37 +135,38 @@ class MessageServer(Messaging__POA.Receiver):
 		event_c = Channel("event")
 		send_c = Channel("event")
 		f_c = Channel("finish")
+		app_c = Channel("app", buffer=1000)
 
 		self.send_c = send_c.writer()
 		self.send_tin = tout_c.reader()
 		self.send_tout = tin_c.writer()
 		self.send_eout = event_c.writer()
+		self.app_in = app_c.reader()
 
 		self.init_receivers()
 
-		print "starting parallel"
 		Parallel(
 			self.do_tics(tin_c.reader(), tout_c.writer()),
 
-			self.wrapp_callback(callback, f_c.writer()),
+			self.wrapp_callback(callback, f_c.writer(),),
 
 			self.send_helper(send_c.reader(), event_c.writer(),
 				tin_c.writer(), tout_c.reader()),
 
 			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
-				f_c.writer()),
+				f_c.writer(), app_c.writer()),
 
-			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer())
+			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer(), app_c.reader())
 		)
+
+	def app_receive(self):
+		return self.app_in()
 
 	def app_local(self, pl="<local>"):
 		self.do_local(pl, 1)
 
 	def app_send(self, pl="<remote>"):
 		self.do_remote(pl, 1)
-
-	def app_test(self):
-		self.app_initialize(self.test_callback)
 
 class CoordinatorServer(Messaging__POA.Coordinator):
 	def __init__(self, num):
