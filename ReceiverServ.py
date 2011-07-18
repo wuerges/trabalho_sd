@@ -15,7 +15,7 @@ class Message:
 		return "M: " + self.t + " origin: " + str(self.origin) + " dest: " + str(self.dest) + " tic: " + str(self.ts) + " locality: " + str(self.v) + " payload: " + self.payload
 
 class MessageServer(Messaging__POA.Receiver):
-	def __init__(self, coord, infile=None):
+	def __init__(self, coord, callback):
 		self.coord = coord
 		self.my_id = coord.register(self._this())
 		self.events = []
@@ -24,6 +24,7 @@ class MessageServer(Messaging__POA.Receiver):
 		self.tic = 0
 		self.ends = 0
 		self.infile = infile
+		self.do_initialize(callback)
 		
 	@process
 	def send_helper(self, sin, eout, tout, tin):
@@ -134,7 +135,7 @@ class MessageServer(Messaging__POA.Receiver):
 		self.do_local("<EOF local>", -2)
 		fout(0)
 
-	def app_initialize(self, callback):
+	def do_initialize(self, callback):
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
@@ -168,16 +169,6 @@ class MessageServer(Messaging__POA.Receiver):
 
 	def app_send(self, pl="<remote>"):
 		self.do_remote(pl, 1)
-
-	def test_callback(self, msg_s):
-		print "doing callback"
-		ms = msg_s.messages(5)
-		print "messages: " + str(ms)
-		for m in ms:
-			if m == 0:
-				msg_s.app_local("<test local>")
-			else:
-				msg_s.app_send("<test send>")
 
 	def app_test(self):
 		self.app_initialize(self.test_callback)
