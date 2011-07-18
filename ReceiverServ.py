@@ -15,7 +15,7 @@ class Message:
 		return "M: " + self.t + " origin: " + str(self.origin) + " dest: " + str(self.dest) + " tic: " + str(self.ts) + " locality: " + str(self.v) + " payload: " + self.payload
 
 class MessageServer(Messaging__POA.Receiver):
-	def __init__(self, coord, callback):
+	def __init__(self, coord):
 		self.coord = coord
 		self.my_id = coord.register(self._this())
 		self.events = []
@@ -23,7 +23,7 @@ class MessageServer(Messaging__POA.Receiver):
 		self.recs_q = {}
 		self.tic = 0
 		self.ends = 0
-		self.infile = infile
+	def start(self, callback):
 		self.do_initialize(callback)
 		
 	@process
@@ -45,13 +45,6 @@ class MessageServer(Messaging__POA.Receiver):
 		recs = self.coord.receivers()
 		self.recs = dict([(x.get_id(), x) for x in recs])
 		self.recs_q = dict([(x.get_id(), []) for x in recs])
-
-	def messages(self, size):
-		if(self.infile == None):
-			return [random.sample([0,1], 1)[0] for i in range(size)]
-		else:
-			f = open(infile)
-			return [int(s) for s in f.readlines]
 
 	@process
 	def do_tics(self, cin, cout):

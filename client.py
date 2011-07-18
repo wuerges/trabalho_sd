@@ -21,7 +21,7 @@ coord = coord_o._narrow(CoordinatorServer)
 
 def test_callback(msg_s):
 	print "doing callback"
-	ms = msg_s.messages(5)
+	ms = [random.sample([0,1], 1)[0] for i in range(5)]
 	print "messages: " + str(ms)
 	for m in ms:
 		if m == 0:
@@ -29,6 +29,6 @@ def test_callback(msg_s):
 		else:
 			msg_s.app_send("<test send>")
 
-ms = MessageServer(coord, test_callback)
-ms.app_test()
+ms = MessageServer(coord)
+ms.start(test_callback)
 
