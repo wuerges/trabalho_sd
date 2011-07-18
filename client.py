@@ -20,5 +20,5 @@ coord_o = name_server.resolve(cs_name)
 coord = coord_o._narrow(CoordinatorServer)
 
 ms = MessageServer(coord)
-ms.do_test()
+ms.app_test()
 

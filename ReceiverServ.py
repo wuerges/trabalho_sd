@@ -32,7 +32,6 @@ class MessageServer(Messaging__POA.Receiver):
 			tout(msg.ts)
 			tin()
 			eout(msg)
-
 	def send(self, m_id, ts, v, payload):
 		self.send_c(Message(m_id, self.my_id, ts, v, "recv", payload))
 
@@ -76,19 +75,6 @@ class MessageServer(Messaging__POA.Receiver):
 			self.send_eout(Message(self.my_id, k, mtic, v, "send", payload))
 			self.recs[k].send(self.my_id, mtic, v * 2, payload)
 	
-	@process
-	def do_sends(self, tout, tin, eout, fout):
-		ms = self.messages(5)
-		print "messages: " + str(ms)
-		for m in ms:
-			if m == 0:
-				self.do_local("<local event>", 1)
-			else:
-				self.do_remote("<send event>", 1)
-		self.do_remote("<EOF remoto>", -1)
-		self.do_local("<EOF local>", -2)
-		fout(0)
-
 	def do_dequeue(self):
 		while((len(self.recs_q) > 0) and 
 				reduce(lambda r,i: r and i, [len(self.recs_q[x]) != 0 for x in self.recs_q], True)):
@@ -128,7 +114,15 @@ class MessageServer(Messaging__POA.Receiver):
 		eout.poison()
 		self.send_c.poison()
 
-	def do_test(self):
+		print "This client id: " + str(self.my_id)
+		print "Recorded events"
+		print "\n".join([str(x) for x in self.events])
+		print "Recorded event queues"
+		for ek in self.recs_q.keys():
+			print "\n".join([str(e) for e in self.recs_q[ek]])
+		self.coord.unregister(self.my_id)
+
+	def app_initialize(self):
 		tin_c = Channel("tics-in")
 		tout_c = Channel("tics-out")
 		event_c = Channel("event")
@@ -142,15 +136,11 @@ class MessageServer(Messaging__POA.Receiver):
 
 		self.init_receivers()
 
-
 		Parallel(
 			self.do_tics(tin_c.reader(), tout_c.writer()),
 
 			self.send_helper(send_c.reader(), event_c.writer(),
 				tin_c.writer(), tout_c.reader()),
-
-			self.do_sends(self.send_tout, self.send_tin, self.send_eout,
-				f_c.writer()),
 
 			self.do_receives(tin_c.writer(), tout_c.reader(), event_c.reader(),
 				f_c.writer()),
@@ -158,14 +148,29 @@ class MessageServer(Messaging__POA.Receiver):
 			self.do_finish(f_c.reader(), tin_c.writer(), event_c.writer())
 		)
 
-		print "This client id: " + str(self.my_id)
-		print "Recorded events"
-		print "\n".join([str(x) for x in self.events])
-		print "Recorded event queues"
-		for ek in self.recs_q.keys():
-			print "\n".join([str(e) for e in self.recs_q[ek]])
+	def app_local(self, pl="<local>"):
+		self.do_local(pl, 1)
+	def app_send(self, pl="<remote>"):
+		self.do_remote(pl, 1)
 
-		self.coord.unregister(self.my_id)
+
+	def app_finalize(self):
+		self.do_remote("<EOF remoto>", -1)
+		self.do_local("<EOF local>", -2)
+		fout(0)
+
+	def app_test(self):
+		self.app_initialize()
+	
+		ms = self.messages(5)
+		print "messages: " + str(ms)
+		for m in ms:
+			if m == 0:
+				self.do_local("<local event>", 1)
+			else:
+				self.do_remote("<send event>", 1)
+
+		self.app_finalize()
 
 class CoordinatorServer(Messaging__POA.Coordinator):
 	def __init__(self, num):
