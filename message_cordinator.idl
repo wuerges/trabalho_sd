@@ -3,18 +3,64 @@
 
 
 module Messaging {
-	interface Receiver {
-		void send(in long id, in long ts, in long value, in string message);
+
+  /**
+   * Interface of a receiver.
+   */
+  interface Receiver {
+    /** 
+     * Sends a message to the receiver. 
+     *
+     * @param origin_id : the id of the sender of the message.
+     * @param ts        : the tic of the message.
+     * @param value     : 2 if it is a normal event, -2 if it is an EOF event.
+     * @param message   : the payload.
+     */
+		void send(in long origin_id, in long tic, in long value, in string message);
+    /**
+     * Returns the id of this Receiver.
+     * @return the id.
+     */
 		long get_id();
-	};
+  };
 
-	typedef sequence<Receiver> ReceiverSeq;
+  /**
+   * A sequence of receivers.
+   */
+  typedef sequence<Receiver> ReceiverSeq;
 
-	interface Coordinator {
-		long register(in Receiver rec);
-		void unregister(in long id);
-		boolean ready();
-		ReceiverSeq receivers();
-	};
+  /**
+   * Interface of the coordinator server
+   */
+  interface Coordinator {
+    /**
+     * Registers a receiver in the coordination server.
+     *
+     * @param rec : the receiver.
+     */
+    long register(in Receiver rec);
+
+    /**
+     * Unregisters a receiver in the coordination server.
+     *
+     * @param id : the receiver id.
+     */
+    void unregister(in long id);
+    
+    /**
+     * Checks if all receivers have already connected to the server.
+     *
+     * @return : true if receivers are ready to start communication, false otherwise.
+     */
+    boolean ready();
+
+    /**
+     * Fetches the list of receivers registered to the connected server.
+     * Important: Should only be called after ready() == true
+     *
+     * @return : the list containing all the receivers.
+     */
+    ReceiverSeq receivers();
+  };
 };
 
