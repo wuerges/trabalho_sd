@@ -132,7 +132,7 @@ class MessageServer(Messaging__POA.Receiver):
 		event_c = Channel("event")
 		send_c = Channel("event")
 		f_c = Channel("finish")
-		app_c = Channel("app", buffer=1000)
+		app_c = Channel("app", buffer=1000000)
 
 		self.send_c = send_c.writer()
 		self.send_tin = tout_c.reader()
